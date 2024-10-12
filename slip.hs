@@ -193,6 +193,24 @@ s2l :: Sexp -> Lexp
 s2l (Snum n) = Lnum n
 s2l (Ssym s) = Lvar s
 -- ¡¡COMPLÉTER ICI!!
+
+-- gestion des if
+s2l (Snode (Ssym "if") [cond, thenBranch, elseBranch]) = --prend les 3 args necessaires
+    Ltest (s2l cond) (s2l thenBranch) (s2l elseBranch)  --transforme recursivement le lexp et combine
+    
+-- gestion des appels de fonction
+s2l (Snode func args) =  
+    Lsend (s2l func) (map s2l args)  --transforme les arguments en lexp et combien dans lsend
+    
+-- gestion des let 
+s2l (Snode (Ssym "let") [Ssym x, expr, body]) =
+    Llet x (s2l expr) (s2l body)
+--- a completer
+
+
+-- ¡¡COMPLÉTER ICI!!
+
+
 s2l se = error ("Expression Psil inconnue: " ++ showSexp se)
 
 ---------------------------------------------------------------------------
