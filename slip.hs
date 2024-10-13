@@ -193,9 +193,9 @@ s2l :: Sexp -> Lexp
 s2l (Snum n) = Lnum n                      -- Conversion des nombres
 s2l (Ssym "true") = Lbool True             -- Conversion du booléen true
 s2l (Ssym "false") = Lbool False           -- Conversion du booléen false
-s2l (Ssym v) = Lvar v                      -- Conversion des variables (symboles)
+s2l (Ssym v) = Lvar v                      -- Conversion des variables
 
--- Cas d'une expression `let`
+-- Cas d'une expression "let"
 s2l (Snode (Ssym "let") [Snode (Ssym v) [e], body]) =
   Llet v (s2l e) (s2l body)
 
@@ -203,11 +203,11 @@ s2l (Snode (Ssym "let") [Snode (Ssym v) [e], body]) =
 s2l (Snode (Ssym "if") [cond, e1, e2]) =
   Ltest (s2l cond) (s2l e1) (s2l e2)
 
--- Cas d'une fonction anonyme (lambda/fob)
+-- Cas d'une fonction fob
 s2l (Snode (Ssym "fob") [Snode _ params, body]) =
   Lfob (map (\(Ssym p) -> p) params) (s2l body)
 
--- Cas d'un appel de fonction/objet
+-- Cas d'un appel de fonction
 s2l (Snode f args) = Lsend (s2l f) (map s2l args)
 
 s2l expr = error ("Expression Psil inconnue: " ++ showSexp expr)
