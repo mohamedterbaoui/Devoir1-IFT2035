@@ -190,10 +190,27 @@ data Lexp = Lnum Int             -- Constante entière.
 
 -- Première passe simple qui analyse une Sexp et construit une Lexp équivalente.
 s2l :: Sexp -> Lexp
-s2l (Snum n) = Lnum n
-s2l (Ssym s) = Lvar s
--- ¡¡COMPLÉTER ICI!!
-s2l se = error ("Expression Psil inconnue: " ++ showSexp se)
+s2l (Snum n) = Lnum n                      -- Conversion des nombres
+s2l (Ssym "true") = Lbool True             -- Conversion du booléen true
+s2l (Ssym "false") = Lbool False           -- Conversion du booléen false
+s2l (Ssym v) = Lvar v                      -- Conversion des variables (symboles)
+
+-- Cas d'une expression `let`
+s2l (Snode (Ssym "let") [Snode (Ssym v) [e], body]) =
+  Llet v (s2l e) (s2l body)
+
+-- Cas d'une expression conditionnelle `if`
+s2l (Snode (Ssym "if") [cond, e1, e2]) =
+  Ltest (s2l cond) (s2l e1) (s2l e2)
+
+-- Cas d'une fonction anonyme (lambda/fob)
+s2l (Snode (Ssym "fob") [Snode _ params, body]) =
+  Lfob (map (\(Ssym p) -> p) params) (s2l body)
+
+-- Cas d'un appel de fonction/objet
+s2l (Snode f args) = Lsend (s2l f) (map s2l args)
+
+s2l expr = error ("Expression Psil inconnue: " ++ showSexp expr)
 
 ---------------------------------------------------------------------------
 -- Représentation du contexte d'exécution                                --
@@ -232,6 +249,7 @@ env0 = let binop f op =
               ("=", binop Vbool (==)),
               ("true",  Vbool True),
               ("false", Vbool False)]
+-- this is a comment
 
 ---------------------------------------------------------------------------
 -- Évaluateur                                                            --
@@ -270,3 +288,21 @@ lexpOf = s2l . sexpOf
 
 valOf :: String -> Value
 valOf = evalSexp . sexpOf
+
+main :: IO ()
+main = do
+  let expr1 = Snode (Ssym "let") [Snode (Ssym "x") [Snum 5], Ssym "x"]
+  print (s2l expr1)  -- Doit donner : Llet "x" (Lnum 5) (Lvar "x")
+
+  let expr2 = Snode (Ssym "if") [Ssym "true", Snum 1, Snum 0]
+  print (s2l expr2)  -- Doit donner : Ltest (Lbool True) (Lnum 1) (Lnum 0)
+
+  let expr3 = Snode (Ssym "+") [Snum 1, Snum 2]
+  print (s2l expr3)  -- Doit donner : Lsend (Lvar "+") [Lnum 1, Lnum 2]
+
+  let expr4 = Snode (Ssym "fob") 
+                [ Snode (Ssym "") [Ssym "x", Ssym "y"],
+                  Snode (Ssym "+") [Ssym "x", Ssym "y"]]
+
+  print (s2l expr4) -- Doit donner : Lfob ["x", "y"] 
+                    -- (Lsend (Lvar "+") [Lvar "x", Lvar "y"])
