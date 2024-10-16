@@ -192,7 +192,8 @@ data Lexp = Lnum Int             -- Constante entière.
 s2l :: Sexp -> Lexp
 s2l (Snum n) = Lnum n
 s2l (Ssym s) = Lvar s
--- ¡¡COMPLÉTER ICI!!
+
+-------------------- ¡¡COMPLÉTER ICI!!----------------------------------------
 
 -- gestion des if
 s2l (Snode (Ssym "if") [cond, thenBranch, elseBranch]) = --prend les 3 args necessaires
@@ -205,10 +206,12 @@ s2l (Snode func args) =
 -- gestion des let 
 s2l (Snode (Ssym "let") [Ssym x, expr, body]) =
     Llet x (s2l expr) (s2l body)
---- a completer
+
+s2l (Snode (Ssym "fix") [Snode bindings body]) =
+    Lfix (map toBinding bindings) (s2l body)
 
 
--- ¡¡COMPLÉTER ICI!!
+--FIN----------¡¡COMPLÉTER ICI!!----------FIN--
 
 
 s2l se = error ("Expression Psil inconnue: " ++ showSexp se)
