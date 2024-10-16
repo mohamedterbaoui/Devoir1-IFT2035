@@ -209,6 +209,10 @@ s2l (Snode (Ssym "let") [Ssym x, expr, body]) =
 
 s2l (Snode (Ssym "fix") [Snode bindings body]) =
     Lfix (map toBinding bindings) (s2l body)
+      where
+    toBinding (Snode [Ssym var, expr]) = (var, s2l expr)
+    toBinding _ = error "Invalid fix binding"
+    
 
 
 --FIN----------¡¡COMPLÉTER ICI!!----------FIN--
