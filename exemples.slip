@@ -1,15 +1,17 @@
 ;;; Quelques exemples.                  -*- mode: lisp-data; coding: utf-8 -*-
-
+;
 2                                       ; ↝ 2
 +                                       ; ↝ <primitive>
 (+ 2 4)                                 ; ↝ 6
 
+(if true 1 0)
+
+(let (x 2) (+ x 3))
+
 ((fob (x) x) 2)                         ; ↝ 2
 
-(((fob (x) (fob (y) (* x y)))
-  3)
- 5)                                     ; ↝ 15
+;(((fob (x) (fob (y) (* x y))) 3)5)      ; ↝ 15
 
-(fix (((even x)  (if (= x 0) true  (odd  (- x 1))))
-      ((odd x)   (if (= x 0) false (even (- x 1)))))
-  (odd 42))                             ; ↝ False
+;(fix (((even x)  (if (= x 0) true  (odd  (- x 1))))
+;      ((odd x)   (if (= x 0) false (even (- x 1)))))
+;  (odd 42))                             ; ↝ False

@@ -189,6 +189,29 @@ data Lexp = Lnum Int             -- Constante entière.
           deriving (Show, Eq)
 
 -- Première passe simple qui analyse une Sexp et construit une Lexp équivalente.
+-- s2l :: Sexp -> Lexp
+-- s2l (Snum n) = Lnum n                      -- Conversion des nombres
+-- s2l (Ssym "true") = Lbool True             -- Conversion du booléen true
+-- s2l (Ssym "false") = Lbool False           -- Conversion du booléen false
+-- s2l (Ssym v) = Lvar v                      -- Conversion des variables
+
+-- -- Cas d'une expression "let"
+-- s2l (Snode (Ssym "let") [Snode (Ssym v) [e], body]) =
+--   Llet v (s2l e) (s2l body)
+
+-- -- Cas d'une expression conditionnelle `if`
+-- s2l (Snode (Ssym "if") [cond, e1, e2]) =
+--   Ltest (s2l cond) (s2l e1) (s2l e2)
+
+-- -- Cas d'une fonction fob
+-- s2l (Snode (Ssym "fob") [Snode _ params, body]) =
+--   Lfob (map (\(Ssym p) -> p) params) (s2l body)
+
+-- -- Cas d'un appel de fonction
+-- s2l (Snode f args) = Lsend (s2l f) (map s2l args)
+
+-- s2l expr = error ("Expression Psil inconnue: " ++ showSexp expr)
+
 s2l :: Sexp -> Lexp
 s2l (Snum n) = Lnum n                      -- Conversion des nombres
 s2l (Ssym "true") = Lbool True             -- Conversion du booléen true
@@ -205,12 +228,17 @@ s2l (Snode (Ssym "if") [cond, e1, e2]) =
 
 -- Cas d'une fonction fob
 s2l (Snode (Ssym "fob") [Snode _ params, body]) =
-  Lfob (map (\(Ssym p) -> p) params) (s2l body)
+    Lfob (map extractVar params) (s2l body)
 
 -- Cas d'un appel de fonction
 s2l (Snode f args) = Lsend (s2l f) (map s2l args)
 
 s2l expr = error ("Expression Psil inconnue: " ++ showSexp expr)
+
+-- Fonction utilitaire pour extraire les variables (symboles)
+extractVar :: Sexp -> String
+extractVar (Ssym s) = s
+extractVar x = error ("Expected a symbol in parameter list, got: " ++ show x)
 
 ---------------------------------------------------------------------------
 -- Représentation du contexte d'exécution                                --
@@ -248,7 +276,9 @@ env0 = let binop f op =
               ("≥", binop Vbool (>=)),
               ("=", binop Vbool (==)),
               ("true",  Vbool True),
-              ("false", Vbool False)]
+              ("false", Vbool False),
+              ("n", Vnum 3)]
+
 -- this is a comment
 
 ---------------------------------------------------------------------------
@@ -256,9 +286,25 @@ env0 = let binop f op =
 ---------------------------------------------------------------------------
 
 eval :: VEnv -> Lexp -> Value
--- ¡¡ COMPLETER !!
 eval _ (Lnum n) = Vnum n
-                  
+eval _ (Lbool b) = Vbool b
+eval env (Lvar v) = case lookup v env of
+                      Just val -> val
+                      Nothing -> error ("Variable non définie: " ++ v)
+eval env (Llet v e body) = eval ((v, eval env e) : env) body
+eval env (Ltest cond e1 e2) = case eval env cond of
+                                Vbool True -> eval env e1
+                                Vbool False -> eval env e2
+                                _ -> error "Condition non booléenne dans if"
+eval env (Lfob params body) = Vfob env params body
+eval env (Lsend f args) = case eval env f of
+                            Vbuiltin f' -> f' (map (eval env) args)
+                            Vfob env' params body ->
+                              let newEnv = zip params (map (eval env) args) ++ env'
+                              in eval newEnv body
+                            _ -> error "Appel de fonction non valide"
+
+
 ---------------------------------------------------------------------------
 -- Toplevel                                                              --
 ---------------------------------------------------------------------------
@@ -270,7 +316,7 @@ evalSexp = eval env0 . s2l
 -- l'autre, et renvoie la liste des valeurs obtenues.
 run :: FilePath -> IO ()
 run filename =
-    do inputHandle <- openFile filename ReadMode 
+    do inputHandle <- openFile filename ReadMode
        hSetEncoding inputHandle utf8
        s <- hGetContents inputHandle
        (hPutStr stdout . show)
@@ -289,20 +335,101 @@ lexpOf = s2l . sexpOf
 valOf :: String -> Value
 valOf = evalSexp . sexpOf
 
+
 main :: IO ()
 main = do
-  let expr1 = Snode (Ssym "let") [Snode (Ssym "x") [Snum 5], Ssym "x"]
-  print (s2l expr1)  -- Doit donner : Llet "x" (Lnum 5) (Lvar "x")
+  -- let expr1 = Snode (Ssym "let") [Snode (Ssym "x") [Snum 5], Ssym "x"]
+  -- print (s2l expr1)  -- Doit donner : Llet "x" (Lnum 5) (Lvar "x")
 
-  let expr2 = Snode (Ssym "if") [Ssym "true", Snum 1, Snum 0]
-  print (s2l expr2)  -- Doit donner : Ltest (Lbool True) (Lnum 1) (Lnum 0)
+  -- let expr2 = Snode (Ssym "if") [Ssym "true", Snum 1, Snum 0]
+  -- print (s2l expr2)  -- Doit donner : Ltest (Lbool True) (Lnum 1) (Lnum 0)
 
-  let expr3 = Snode (Ssym "+") [Snum 1, Snum 2]
-  print (s2l expr3)  -- Doit donner : Lsend (Lvar "+") [Lnum 1, Lnum 2]
+  -- let expr3 = Snode (Ssym "+") [Snum 1, Snum 2]
+  -- print (s2l expr3)  -- Doit donner : Lsend (Lvar "+") [Lnum 1, Lnum 2]
 
-  let expr4 = Snode (Ssym "fob") 
-                [ Snode (Ssym "") [Ssym "x", Ssym "y"],
-                  Snode (Ssym "+") [Ssym "x", Ssym "y"]]
+  -- let expr4 = Snode (Ssym "fob") 
+  --               [ Snode (Ssym "") [Ssym "x", Ssym "y"],
+  --                 Snode (Ssym "+") [Ssym "x", Ssym "y"]]
 
-  print (s2l expr4) -- Doit donner : Lfob ["x", "y"] 
-                    -- (Lsend (Lvar "+") [Lvar "x", Lvar "y"])
+  -- print (s2l expr4) -- Doit donner : Lfob ["x", "y"] 
+  --                   -- (Lsend (Lvar "+") [Lvar "x", Lvar "y"])
+
+  -- Définir des expressions Lisp
+  -- let expr1 = "(let (x 2) x)"
+  -- let expr2 = "(if true 1 0)"
+  -- let expr3 = "((fob (x) x) 2)"
+
+  -- -- Convertir les chaînes en Sexp
+  -- let sexp1 = sexpOf expr1
+  -- let sexp2 = sexpOf expr2
+  -- let sexp3 = sexpOf expr3
+
+  -- -- Utiliser s2l pour convertir les Sexp en Lexp
+  -- let lexp1 = s2l sexp1
+  -- let lexp2 = s2l sexp2
+  -- let lexp3 = s2l sexp3
+
+  -- -- Évaluer les Lexp
+  -- let val1 = eval env0 lexp1
+  -- let val2 = eval env0 lexp2
+  -- let val3 = eval env0 lexp3
+
+  -- -- Afficher les résultats
+  -- putStrLn "Expression 1:"
+  -- print sexp1
+  -- print lexp1
+  -- print val1
+
+  -- putStrLn "\nExpression 2:"
+  -- print sexp2
+  -- print lexp2
+  -- print val2
+
+  -- putStrLn "\nExpression 3:"
+  -- print sexp3
+  -- print lexp3
+  -- print val3
+
+        -- Évaluer les Lexp
+    let lexp1 = Lnum 42
+    let val1 = eval env0 lexp1
+    print val1  -- Devrait afficher Vnum 42
+
+    let lexp2 = Lvar "true"
+    let val2 = eval env0 lexp2
+    print val2  -- Devrait afficher Vbool True
+
+    let lexp3 = Ltest (Lbool True) (Lnum 1) (Lnum 2)
+    let val3 = eval env0 lexp3
+    print val3  -- Devrait afficher Vnum 1
+
+    let lexp4 = Llet "z" (Lnum 5) (Lvar "z")
+    let val4 = eval env0 lexp4
+    print val4  -- Devrait afficher Vnum 5
+
+    -- Tester une fonction anonyme (fob)
+    let fobExpr = Lfob ["a"] (Llet "z" (Lvar "a") (Lvar "z"))
+    let lexp5 = Lsend fobExpr [Lnum 15]
+    let val5 = eval env0 lexp5
+    print val5  -- Devrait afficher Vnum 15
+
+    -- Tester une fonction avec plusieurs paramètres
+    let fobMultiParams = Lfob ["a", "b"] (Ltest (Lbool True) (Lvar "a") (Lvar "b"))
+    let lexp6 = Lsend fobMultiParams [Lnum 5, Lnum 10]
+    let val6 = eval env0 lexp6
+    print val6  -- Devrait afficher Vnum 5
+
+    -- Autres tests supplémentaires
+    let lexp7 = Ltest (Lbool False) (Lnum 1) (Lnum 2)
+    let val7 = eval env0 lexp7
+    print val7  -- Devrait afficher Vnum 2
+
+    let lexp8 = Llet "a" (Lnum 10) (Llet "b" (Lnum 20) (Lvar "a"))
+    let val8 = eval env0 lexp8
+    print val8  -- Devrait afficher Vnum 10
+
+    let lexp9 = Lsend (Lfob ["c"] (Lvar "c")) [Lnum 100]
+    let val9 = eval env0 lexp9
+    print val9  -- Devrait afficher Vnum 100
+
+  -- run "exemples.slip"
