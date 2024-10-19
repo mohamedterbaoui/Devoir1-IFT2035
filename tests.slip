@@ -1,0 +1,13 @@
+;;; exemples additionels.    -*- mode: lisp-data; coding: utf-8 -*-
+
+1                                       ; ↝ 1
++                                       ; ↝ <primitive>
+true                                    ; ↝ True
+false                                   ; ↝ False
+(+ 2 4)                                 ; ↝ 6 test d'une simple operation
+(if (< 1 2) 1 0)                        ; ↝ 1 "test de condition"
+(if (> 2 10) 1 (if (= 2 10) 2 3))       ; ↝ 3 test if imbriqué
+(let y 3 (+ 2 y))                       ; ↝ 5 test let simple
+(let x 2 (let y 8 (+ x y)))             ; ↝ 10 test let imbriqué
+((fob (x y) (+ x y)) 1 4)               ; ↝ 5 fob avec 2 arguments
+((fob (x y z) (* x (* y z))) 1 4 2)     ; ↝ 8 fob avec 3 arguments
