@@ -350,11 +350,15 @@ valOf = evalSexp . sexpOf
 
 
 main = do
+
+    -- Exemples pour tester eval Lfix 
+    -- Premier exemple simple de Lfix
     let testExpr1 = Lfix [("double", Lfob ["x"] (Lsend (Lvar "*") [Lvar "x", Lnum 2]))] (Lsend (Lvar "double") [Lnum 5])
 
     let value1 = eval env0 testExpr1
     print value1
 
+    -- Deuxieme example avec 2 declarations
     let testExpr = Lfix
           [ ("even", Lfob ["x"] (Lsend (Lvar "+") [Lvar "x", Lnum 1]))
           ,("odd", Lfob ["x"] (Lsend (Lvar "+") [Lvar "x", Lnum 3]))]
