@@ -206,14 +206,17 @@ s2l (Snode func args) =
 -- gestion des let 
 s2l (Snode (Ssym "let") [Ssym x, expr, body]) =
     Llet x (s2l expr) (s2l body)
-
+    
+--gestion des fix 
 s2l (Snode (Ssym "fix") [Snode bindings body]) =
     Lfix (map toBinding bindings) (s2l body)
       where
     toBinding (Snode [Ssym var, expr]) = (var, s2l expr)
     toBinding _ = error "Invalid fix binding"
     
-
+---gestion des fix (OPTION 2)
+s2l (Snode [Ssym "fix", Snode [Ssym f, Snode params body]]) =
+    Lfix f (map (\(Ssym p) -> p) params) (s2l body)
 
 --FIN----------¡¡COMPLÉTER ICI!!----------FIN--
 
