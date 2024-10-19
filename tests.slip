@@ -11,3 +11,4 @@ false                                   ; ↝ False
 (let x 2 (let y 8 (+ x y)))             ; ↝ 10 test let imbriqué
 ((fob (x y) (+ x y)) 1 4)               ; ↝ 5 fob avec 2 arguments
 ((fob (x y z) (* x (* y z))) 1 4 2)     ; ↝ 8 fob avec 3 arguments
+((fix ((double (x) (* x 2))) (double 5))) ; ↝ 10 fix exp simple 
