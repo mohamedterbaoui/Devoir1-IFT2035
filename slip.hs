@@ -204,21 +204,21 @@ s2l (Snode func args) =
     Lsend (s2l func) (map s2l args)  --transforme les arguments en lexp et combien dans lsend
     
 -- gestion des let 
-s2l (Snode (Ssym "let") [Ssym x, expr, body]) =
-    Llet x (s2l expr) (s2l body)
+s2l ( Snode (Ssym "let") [Ssym x, expr, body] ) =
+     Llet x (s2l expr) (s2l body)
     
---gestion des fix 
-s2l (Snode (Ssym "fix") [Snode bindings body]) =
-    Lfix (map toBinding bindings) (s2l body)
+--gestion des fix : cas recursif
+s2l (Snode (Ssym "fix") [Snode bindings body] ) = -- Lfix prend une liste de paires (nom de variable, expression) et un corps
       where
-    toBinding (Snode [Ssym var, expr]) = (var, s2l expr)
-    toBinding _ = error "Invalid fix binding"
-    
----gestion des fix (OPTION 2)
-s2l (Snode [Ssym "fix", Snode [Ssym f, Snode params body]]) =
-    Lfix f (map (\(Ssym p) -> p) params) (s2l body)
+    Lfix (map toBinding bindings) (s2l body)  
+    toBinding (Snode [Ssym var, expr]) =  (var, s2l expr) -- xtraction des paires var-expr
+    toBinding _ = error "Invalid fix binding"  --en cas d' erreur
 
 
+-- Gestion de la déclaration de fonction avec sucre syntaxique
+-- l'idee est de prendre une forme((f x1 ... xn) e) et la transformer en (f (fob (x1 ... xn) e))
+s2l (Snode [Ssym f, Snode params body]) =
+    Llet f ( Lfob (map (\(Ssym p) -> p) params) (s2l body)  ) (Lvar f)
     
 
 --FIN----------¡¡COMPLÉTER ICI!!----------FIN--
@@ -268,7 +268,8 @@ env0 = let binop f op =
 -- Évaluateur                                                            --
 ---------------------------------------------------------------------------
 
-
+--  evalue les L-expressions
+-- prend un environnement (env) et une L-expression (Lexp) et renvoie une Value.
 eval :: VEnv -> Lexp -> Value
 
 eval _ (Lnum n) = Vnum n
@@ -281,17 +282,17 @@ eval env (Lvar v) = case lookup v env of
                       Just val -> val
                       Nothing -> error ("Variable non définie: " ++ v)
 
--- Gestion des conditions if Ltest
+-- evaluer des conditions if Ltest
 eval env (Ltest cond e1 e2) = case eval env cond of
                                 Vbool True -> eval env e1
                                 Vbool False -> eval env e2
-                                _ -> error "Condition non booléenne dans if"
+                                _ ->  error "Condition non boolenne dans if"
 
--- Gestion d'une expression Llet
+-- evaluer d'une expression Llet
 eval env (Llet v e body) = eval ((v, eval env e) : env) body
 
 -- Gestopm d'une expression Lfob
-eval env (Lfob params body) = Vfob env params body
+eval env (Lfob params body)=Vfob env params body
 
 -- Gestion de l'appel de fonction Lsend
 eval env (Lsend f args) = case eval env f of
@@ -299,7 +300,7 @@ eval env (Lsend f args) = case eval env f of
                             Vfob env' params body ->
                               let newEnv = zip params (map (eval env) args) ++ env'
                               in eval newEnv body
-                            _ -> error "Appel de fonction non valide"
+                            _ -> error "Appel de fonction invalide"
                   
 ---------------------------------------------------------------------------
 -- Toplevel                                                              --
