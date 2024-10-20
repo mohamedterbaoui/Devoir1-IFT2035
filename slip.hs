@@ -218,6 +218,9 @@ s2l (Snode (Ssym "fix") [Snode bindings body]) =
 s2l (Snode [Ssym "fix", Snode [Ssym f, Snode params body]]) =
     Lfix f (map (\(Ssym p) -> p) params) (s2l body)
 
+
+    
+
 --FIN----------¡¡COMPLÉTER ICI!!----------FIN--
 
 
@@ -265,9 +268,38 @@ env0 = let binop f op =
 -- Évaluateur                                                            --
 ---------------------------------------------------------------------------
 
+
 eval :: VEnv -> Lexp -> Value
--- ¡¡ COMPLETER !!
+
 eval _ (Lnum n) = Vnum n
+
+-- Gestion des bools Lbool
+eval _ (Lbool b) = Vbool b
+
+-- Retrouver une variable dans l'environnement Lvar
+eval env (Lvar v) = case lookup v env of
+                      Just val -> val
+                      Nothing -> error ("Variable non définie: " ++ v)
+
+-- Gestion des conditions if Ltest
+eval env (Ltest cond e1 e2) = case eval env cond of
+                                Vbool True -> eval env e1
+                                Vbool False -> eval env e2
+                                _ -> error "Condition non booléenne dans if"
+
+-- Gestion d'une expression Llet
+eval env (Llet v e body) = eval ((v, eval env e) : env) body
+
+-- Gestopm d'une expression Lfob
+eval env (Lfob params body) = Vfob env params body
+
+-- Gestion de l'appel de fonction Lsend
+eval env (Lsend f args) = case eval env f of
+                            Vbuiltin f' -> f' (map (eval env) args)
+                            Vfob env' params body ->
+                              let newEnv = zip params (map (eval env) args) ++ env'
+                              in eval newEnv body
+                            _ -> error "Appel de fonction non valide"
                   
 ---------------------------------------------------------------------------
 -- Toplevel                                                              --
