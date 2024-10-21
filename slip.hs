@@ -214,11 +214,21 @@ s2l (Snode (Ssym "fix") [Snode bindings body] ) = -- Lfix prend une liste de pai
     toBinding (Snode [Ssym var, expr]) =  (var, s2l expr) -- xtraction des paires var-expr
     toBinding _ = error "Invalid fix binding"  --en cas d' erreur
 
+-- Cas d'une expression fix
+-- Cas d'une expression `fix` dans s2l
+s2l (Snode (Ssym "fix") declarations) =
+    let   decls = init declarations  -- On prend tout sauf le dernier élément comme déclarations
+          body = last declarations    -- Le dernier élément est le corps de l'expression
+    in  Lfix (declarationsToPairs decls) (s2l body)
+
+
 
 -- Gestion de la déclaration de fonction avec sucre syntaxique
 -- l'idee est de prendre une forme((f x1 ... xn) e) et la transformer en (f (fob (x1 ... xn) e))
 s2l (Snode [Ssym f, Snode params body]) =
     Llet f ( Lfob (map (\(Ssym p) -> p) params) (s2l body)  ) (Lvar f)
+
+
     
 
 --FIN----------¡¡COMPLÉTER ICI!!----------FIN--
@@ -301,6 +311,9 @@ eval env (Lsend f args) = case eval env f of
                               let newEnv = zip params (map (eval env) args) ++ env'
                               in eval newEnv body
                             _ -> error "Appel de fonction invalide"
+
+
+
                   
 ---------------------------------------------------------------------------
 -- Toplevel                                                              --
