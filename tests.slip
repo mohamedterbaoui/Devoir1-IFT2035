@@ -11,4 +11,15 @@ false                                   ; ↝ False
 (let x 2 (let y 8 (+ x y)))             ; ↝ 10 test let imbriqué
 ((fob (x y) (+ x y)) 1 4)               ; ↝ 5 fob avec 2 arguments
 ((fob (x y z) (* x (* y z))) 1 4 2)     ; ↝ 8 fob avec 3 arguments
-((fix ((double (x) (* x 2))) (double 5))) ; ↝ 10 fix exp simple 
+;(fix ((double (x) (* x 2))) (double 5)) ; ↝ 10 fix exp simple
+
+;; Test d'une fonction anonyme avec plusieurs arguments et imbrication
+((fob (x y) 
+      (let z (+ x y) 
+          (* z 2))) 3 4)               ; ↝ 14
+
+;; Test d'une fonction avec une condition et une fonction anonyme
+(let x 5 
+    (if (> x 3) 
+        ((fob (y) (* y 2)) x) 
+        0))                              ; ↝ 10

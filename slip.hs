@@ -216,14 +216,25 @@ s2l (Snode (Ssym "let") [Ssym x, expr, body]) =
 s2l (Snode (Ssym "fob") [Snode (Ssym p) params, body]) =
   Lfob (p : map (\(Ssym param) -> param) params) (s2l body)
 
+-- Cas d'une expression fix
+s2l (Snode (Ssym "fix") [bindings, body]) =
+  Lfix (map toBinding (extractBindings bindings)) (s2l body)
+  where
+    -- Fonction pour extraire les liaisons de la liste de déclarations
+    extractBindings :: Sexp -> [Sexp]
+    extractBindings (Snode _ bs) = bs
+    extractBindings _ = error "Invalid fix bindings structure"
+
+    -- Fonction pour transformer chaque binding en paire 
+    -- (nom de variable, expression)
+    toBinding (Snode (Ssym var) [expr]) = (var, s2l expr)
+    toBinding _ = error "Invalid fix binding structure"
+
+
+
+
 -- Cas d'un appel de fonction (ou operation binaire)
 s2l (Snode f args) = Lsend (s2l f) (map s2l args)
-
--- Cas d'une expression fix
-s2l (Snode (Ssym "fix") declarations) =
-    Lfix (declarationsToPairs declarations) (s2l body)
-  where
-    body = last declarations  -- On prend le dernier élément comme corps de la déclaration
 
 
 -- ¡¡COMPLÉTER ICI!!
@@ -231,14 +242,14 @@ s2l (Snode (Ssym "fix") declarations) =
 
 s2l se = error ("Expression Psil inconnue: " ++ showSexp se)
 
-declarationsToPairs :: [Sexp] -> [(Var, Lexp)]
-declarationsToPairs [] = []
-declarationsToPairs (Snode (Ssym fname) params : xs) =
-    (fname, Lfob (fname : extractParams params) (s2l (last xs))) : declarationsToPairs xs
-  where
-    extractParams [] = []
-    extractParams (Ssym p : ps) = p : extractParams ps
-
+-- Fonction auxiliaire pour extraire les paramètres dans expression fix
+extractParams :: [Sexp] -> [Var]
+extractParams [] = []
+extractParams (Ssym p : ps) = p : extractParams ps
+-- Gérer les nœuds (Snode)
+extractParams (Snode _ ps : xs) = extractParams (ps ++ xs)  
+-- Ignorer les autres types (comme Snil ou Snum)
+extractParams (_ : xs) = extractParams xs  
 ---------------------------------------------------------------------------
 -- Représentation du contexte d'exécution                                --
 ---------------------------------------------------------------------------
@@ -305,18 +316,22 @@ eval env (Llet v e body) = eval ((v, eval env e) : env) body
 -- Gestopm d'une expression Lfob
 eval env (Lfob params body) = Vfob env params body
 
+-- Gestion d'une expression Lfix
+eval env (Lfix declarations body) =
+  let newEnv = foldr (\(var, exp) acc -> (var, eval env exp) : acc) 
+                env declarations
+  in eval newEnv body
+
 -- Gestion de l'appel de fonction Lsend
 eval env (Lsend f args) = case eval env f of
                             Vbuiltin f' -> f' (map (eval env) args)
                             Vfob env' params body ->
-                              let newEnv = zip params (map (eval env) args) ++ env'
+                              let newEnv = zip params (map (eval env) args) 
+                                            ++ env'
                               in eval newEnv body
                             _ -> error "Appel de fonction non valide"
 
--- Gestion d'une expression Lfix
-eval env (Lfix declarations body) =
-  let newEnv = foldr (\(var, exp) acc -> (var, eval env exp) : acc) env declarations
-  in eval newEnv body
+
 
 ---------------------------------------------------------------------------
 -- Toplevel                                                              --
@@ -349,11 +364,13 @@ valOf :: String -> Value
 valOf = evalSexp . sexpOf
 
 
+main :: IO ()
 main = do
 
-    -- Exemples pour tester eval Lfix 
+    -- Exemples pour tester partiellement eval Lfix 
     -- Premier exemple simple de Lfix
-    let testExpr1 = Lfix [("double", Lfob ["x"] (Lsend (Lvar "*") [Lvar "x", Lnum 2]))] (Lsend (Lvar "double") [Lnum 5])
+    let testExpr1 = Lfix [("double", Lfob ["x"] (Lsend (Lvar "*") 
+                      [Lvar "x", Lnum 2]))] (Lsend (Lvar "double") [Lnum 5])
 
     let value1 = eval env0 testExpr1
     print value1
@@ -362,7 +379,8 @@ main = do
     let testExpr = Lfix
           [ ("even", Lfob ["x"] (Lsend (Lvar "+") [Lvar "x", Lnum 1]))
           ,("odd", Lfob ["x"] (Lsend (Lvar "+") [Lvar "x", Lnum 3]))]
-          (Lsend (Lvar "+") [Lsend (Lvar "even") [Lnum 2], Lsend (Lvar "odd") [Lnum 2]])  -- Test with 2 functions
+          (Lsend (Lvar "+") 
+          [Lsend (Lvar "even") [Lnum 2], Lsend (Lvar "odd") [Lnum 2]])  
 
     let value = eval env0 testExpr
     print value
